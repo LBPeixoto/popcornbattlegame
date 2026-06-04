@@ -1,0 +1,227 @@
+import 'package:flutter/material.dart';
+import '../../core/services/api_client.dart';
+import '../../core/services/storage_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../models/challenge.dart';
+import '../../services/auth_service.dart';
+import '../../services/challenge_service.dart';
+import '../../widgets/challenge_card.dart';
+import '../auth/login_screen.dart';
+import '../challenge/challenge_detail_screen.dart';
+import '../friends/friends_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabs;
+  late Future<List<Challenge>> _challengesFuture;
+  late ChallengeService _challengeService;
+  late StorageService _storage;
+  late int _myId;
+  late String _username;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+    _init();
+  }
+
+  Future<void> _init() async {
+    _storage = await StorageService.getInstance();
+    _myId = _storage.playerId ?? 0;
+    _username = _storage.username ?? '';
+    final api = ApiClient(_storage);
+    _challengeService = ChallengeService(api);
+    _refresh();
+  }
+
+  void _refresh() {
+    setState(() {
+      _challengesFuture = _challengeService.listChallenges();
+    });
+  }
+
+  Future<void> _logout() async {
+    final storage = await StorageService.getInstance();
+    final api = ApiClient(storage);
+    await AuthService(api, storage).logout();
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          children: [
+            const Text('🍿 POPCORN BATTLE', style: TextStyle(fontSize: 16)),
+            Text('Olá, $_username', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.people_outline),
+            tooltip: 'Amigos',
+            onPressed: () async {
+              await Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendsScreen()));
+              _refresh();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: _logout,
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tabs,
+          indicatorColor: AppColors.primary,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          tabs: const [
+            Tab(text: 'Em andamento'),
+            Tab(text: 'Concluídos'),
+          ],
+        ),
+      ),
+      body: FutureBuilder<List<Challenge>>(
+        future: _challengesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return _ErrorState(error: '${snapshot.error}', onRetry: _refresh);
+          }
+          final all = snapshot.data ?? [];
+          final active = all.where((c) => c.isInProgress).toList();
+          final done = all.where((c) => c.isCompleted).toList();
+
+          return TabBarView(
+            controller: _tabs,
+            children: [
+              _ChallengeList(
+                challenges: active,
+                myId: _myId,
+                emptyMessage: 'Nenhum desafio em andamento.\nDesafie um amigo!',
+                onTap: (c) async {
+                  await Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => ChallengeDetailScreen(challengeId: c.id),
+                  ));
+                  _refresh();
+                },
+              ),
+              _ChallengeList(
+                challenges: done,
+                myId: _myId,
+                emptyMessage: 'Nenhuma batalha concluída ainda.',
+                onTap: (c) => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ChallengeDetailScreen(challengeId: c.id),
+                )),
+              ),
+            ],
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendsScreen()));
+          _refresh();
+        },
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Novo Desafio', style: TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+}
+
+class _ChallengeList extends StatelessWidget {
+  final List<Challenge> challenges;
+  final int myId;
+  final String emptyMessage;
+  final void Function(Challenge) onTap;
+
+  const _ChallengeList({
+    required this.challenges,
+    required this.myId,
+    required this.emptyMessage,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (challenges.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🍿', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            Text(
+              emptyMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () async {},
+      child: ListView.builder(
+        itemCount: challenges.length,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemBuilder: (_, i) => ChallengeCard(
+          challenge: challenges[i],
+          myId: myId,
+          onTap: () => onTap(challenges[i]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String error;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.error, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.wifi_off, size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 16),
+            Text(error, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            OutlinedButton(onPressed: onRetry, child: const Text('Tentar novamente')),
+          ],
+        ),
+      ),
+    );
+  }
+}
