@@ -274,7 +274,7 @@ class _QuestionWidget extends StatelessWidget {
     return switch (question.quizType) {
       'MULTIPLE_CHOICE' => _MultipleChoiceWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
       'TRUE_FALSE' => _TrueFalseWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
-      'ORDERING' => _OrderingWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
+      'ORDERING' => _OrderingWidget(key: ValueKey(question.id), question: question, current: currentAnswer, onAnswer: onAnswer),
       'LIST' => _ListWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
       _ => const Text('Tipo de questão desconhecido'),
     };
@@ -405,7 +405,7 @@ class _OrderingWidgetState extends State<_OrderingWidget> {
         ReorderableListView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          onReorderItem: (oldIndex, newIndex) => _reorder(oldIndex, newIndex),
+          onReorder: _reorder,
           children: _items.asMap().entries.map((entry) {
             final i = entry.key;
             final item = entry.value;
