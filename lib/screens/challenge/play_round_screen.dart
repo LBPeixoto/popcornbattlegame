@@ -409,29 +409,32 @@ class _OrderingWidgetState extends State<_OrderingWidget> {
           children: _items.asMap().entries.map((entry) {
             final i = entry.key;
             final item = entry.value;
-            return Container(
+            return ReorderableDragStartListener(
               key: ValueKey(item.id),
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
+              index: i,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(child: Text('${i + 1}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))),
                     ),
-                    child: Center(child: Text('${i + 1}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold))),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(item.text)),
-                  const Icon(Icons.drag_handle, color: AppColors.textSecondary),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(item.text)),
+                    const Icon(Icons.drag_handle, color: AppColors.textSecondary),
+                  ],
+                ),
               ),
             );
           }).toList(),
