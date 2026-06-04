@@ -368,7 +368,7 @@ class _OrderingWidget extends StatefulWidget {
   final AnswerItem? current;
   final void Function(AnswerItem) onAnswer;
 
-  const _OrderingWidget({required this.question, required this.current, required this.onAnswer});
+  const _OrderingWidget({super.key, required this.question, required this.current, required this.onAnswer});
 
   @override
   State<_OrderingWidget> createState() => _OrderingWidgetState();
