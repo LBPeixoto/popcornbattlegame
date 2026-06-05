@@ -1,4 +1,5 @@
 import 'player.dart';
+import 'power_ups.dart';
 
 class FriendStatus {
   final int id;
@@ -23,7 +24,18 @@ class FriendStatus {
         hasOpenChallenge: json['hasOpenChallenge'] as bool? ?? false,
       );
 
-  Player toPlayer() => Player(id: id, username: username, wins: wins, losses: losses);
+  Player toPlayer() => Player(
+        id: id,
+        username: username,
+        wins: wins,
+        losses: losses,
+        tickets: 0,
+        level: 1,
+        xp: 0,
+        xpToNext: 100,
+        coins: 0,
+        powerUps: PowerUps.empty,
+      );
 }
 
 class FriendRequest {

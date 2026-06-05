@@ -184,6 +184,153 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _LevelCard(player: player),
+        const SizedBox(height: 12),
+        _ResourceRow(player: player),
+        const SizedBox(height: 12),
+        _WinRow(player: player),
+        if (player.powerUps.hasAny) ...[
+          const SizedBox(height: 12),
+          _PowerUpsCard(player: player),
+        ],
+      ],
+    );
+  }
+}
+
+class _LevelCard extends StatelessWidget {
+  final Player player;
+  const _LevelCard({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Nível ${player.level}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${player.xp} / ${player.xpToNext} XP',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: player.xpProgress.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: AppColors.card,
+              valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResourceRow extends StatelessWidget {
+  final Player player;
+  const _ResourceRow({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ResourceCard(
+            icon: Icons.confirmation_num_outlined,
+            label: 'Tickets',
+            value: '${player.tickets}',
+            color: AppColors.primary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ResourceCard(
+            icon: Icons.monetization_on_outlined,
+            label: 'Moedas',
+            value: '${player.coins}',
+            color: AppColors.secondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResourceCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  const _ResourceCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+              Text(label,
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WinRow extends StatelessWidget {
+  final Player player;
+  const _WinRow({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -202,6 +349,89 @@ class _StatRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PowerUpsCard extends StatelessWidget {
+  final Player player;
+  const _PowerUpsCard({required this.player});
+
+  @override
+  Widget build(BuildContext context) {
+    final pu = player.powerUps;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Power-ups',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              if (pu.hint > 0)
+                _PowerUpChip(icon: Icons.lightbulb_outline, label: 'Dica', count: pu.hint),
+              if (pu.skip > 0)
+                _PowerUpChip(icon: Icons.skip_next_outlined, label: 'Pular', count: pu.skip),
+              if (pu.shield > 0)
+                _PowerUpChip(icon: Icons.shield_outlined, label: 'Escudo', count: pu.shield),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PowerUpChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  const _PowerUpChip({required this.icon, required this.label, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: AppColors.secondary, size: 22),
+            ),
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '$count',
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+      ],
     );
   }
 }

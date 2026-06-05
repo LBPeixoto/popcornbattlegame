@@ -3,7 +3,9 @@ import '../../core/services/api_client.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/challenge.dart';
+import '../../models/player.dart';
 import '../../services/auth_service.dart';
+import '../../services/player_service.dart';
 import '../../services/challenge_service.dart';
 import '../../widgets/challenge_card.dart';
 import '../auth/login_screen.dart';
@@ -25,9 +27,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late TabController _tabs;
   late Future<List<Challenge>> _challengesFuture;
   late ChallengeService _challengeService;
+  late PlayerService _playerService;
   late StorageService _storage;
   late int _myId;
   late String _username;
+  Player? _player;
 
   @override
   void initState() {
@@ -42,7 +46,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _username = _storage.username ?? '';
     final api = ApiClient(_storage);
     _challengeService = ChallengeService(api);
+    _playerService = PlayerService(api);
     _refresh();
+    _playerService.getMe().then((p) {
+      if (mounted) setState(() => _player = p);
+    }).catchError((_) {});
   }
 
   void _refresh() {
@@ -75,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       drawer: _AppDrawer(
         username: _username,
         myId: _myId,
+        player: _player,
         onLogout: _logout,
       ),
       appBar: AppBar(
@@ -233,9 +242,15 @@ class _ErrorState extends StatelessWidget {
 class _AppDrawer extends StatelessWidget {
   final String username;
   final int myId;
+  final Player? player;
   final VoidCallback onLogout;
 
-  const _AppDrawer({required this.username, required this.myId, required this.onLogout});
+  const _AppDrawer({
+    required this.username,
+    required this.myId,
+    required this.player,
+    required this.onLogout,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -249,16 +264,55 @@ class _AppDrawer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary,
-                  child: Icon(Icons.person, color: Colors.white, size: 28),
+                Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.primary,
+                      child: Icon(Icons.person, color: Colors.white, size: 28),
+                    ),
+                    const Spacer(),
+                    if (player != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Nível ${player!.level}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Text(username,
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const Text('🍿 Popcorn Battle',
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                if (player != null) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.confirmation_num_outlined,
+                          size: 13, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text('${player!.tickets} tickets',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const SizedBox(width: 12),
+                      const Icon(Icons.monetization_on_outlined,
+                          size: 13, color: AppColors.secondary),
+                      const SizedBox(width: 4),
+                      Text('${player!.coins} moedas',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
