@@ -456,56 +456,137 @@ class _ListWidget extends StatefulWidget {
 }
 
 class _ListWidgetState extends State<_ListWidget> {
-  final List<TextEditingController> _controllers = [];
-
-  @override
-  void initState() {
-    super.initState();
-    final count = widget.question.totalAnswers ?? 3;
-    for (var i = 0; i < count; i++) {
-      _controllers.add(TextEditingController());
-    }
-  }
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+  final List<String> _correct = [];
+  String? _feedback;
+  bool _feedbackIsError = false;
 
   @override
   void dispose() {
-    for (final c in _controllers) { c.dispose(); }
+    _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  void _update() {
+  int get _limit => widget.question.totalAnswers ?? 3;
+  List<String>? get _validAnswers => widget.question.listAnswers;
+
+  bool _isCorrect(String text) {
+    final answers = _validAnswers;
+    if (answers == null) return true;
+    return answers.any((a) => a.toLowerCase() == text.toLowerCase());
+  }
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+
+    if (_correct.length >= _limit) {
+      setState(() { _feedback = 'Você já encontrou todos os $_limit itens!'; _feedbackIsError = false; });
+      return;
+    }
+
+    final alreadyFound = _correct.any((e) => e.toLowerCase() == text.toLowerCase());
+    if (alreadyFound) {
+      setState(() { _feedback = '"$text" já está na lista.'; _feedbackIsError = false; });
+      _controller.clear();
+      _focusNode.requestFocus();
+      return;
+    }
+
+    if (!_isCorrect(text)) {
+      setState(() { _feedback = '"$text" não está na lista.'; _feedbackIsError = true; });
+      _controller.clear();
+      _focusNode.requestFocus();
+      return;
+    }
+
+    setState(() {
+      _correct.add(text);
+      _feedback = null;
+      _feedbackIsError = false;
+    });
+    _controller.clear();
+    _focusNode.requestFocus();
+
     widget.onAnswer(AnswerItem(
       questionId: widget.question.id,
-      listAnswers: _controllers.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList(),
+      listAnswers: List.from(_correct),
     ));
   }
 
   @override
   Widget build(BuildContext context) {
+    final found = _correct.length;
+    final done = found >= _limit;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Liste ${_controllers.length} itens:',
+          'Encontre $_limit itens — $found/$_limit encontrado${found == 1 ? '' : 's'}',
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
         ),
-        const SizedBox(height: 8),
-        ..._controllers.asMap().entries.map((entry) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: TextField(
-            controller: entry.value,
-            onChanged: (_) => _update(),
-            decoration: InputDecoration(
-              labelText: 'Item ${entry.key + 1}',
-              prefixIcon: Container(
-                margin: const EdgeInsets.all(8),
-                width: 28, height: 28,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: Center(child: Text('${entry.key + 1}', style: const TextStyle(color: AppColors.primary, fontSize: 12))),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                onSubmitted: (_) => _submit(),
+                textInputAction: TextInputAction.send,
+                enabled: !done,
+                decoration: const InputDecoration(
+                  hintText: 'Digite um nome...',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
               ),
             ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: done ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                minimumSize: const Size(0, 50),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Enviar'),
+            ),
+          ],
+        ),
+        if (_feedback != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _feedback!,
+            style: TextStyle(
+              color: _feedbackIsError ? AppColors.wrong : AppColors.textSecondary,
+              fontSize: 13,
+            ),
           ),
-        )),
+        ],
+        if (_correct.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          ..._correct.asMap().entries.map((entry) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.correct.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.correct.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, color: AppColors.correct, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(entry.value, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.correct))),
+                Text('${entry.key + 1}', style: const TextStyle(color: AppColors.correct, fontSize: 12)),
+              ],
+            ),
+          )),
+        ],
       ],
     );
   }

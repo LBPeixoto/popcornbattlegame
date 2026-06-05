@@ -39,6 +39,15 @@ class ApiClient {
     return _handle(response);
   }
 
+  Future<dynamic> patch(String url, Object body) async {
+    final response = await _http.patch(
+      Uri.parse(url),
+      headers: _headers,
+      body: jsonEncode(body),
+    );
+    return _handle(response);
+  }
+
   Future<dynamic> delete(String url) async {
     final response = await _http.delete(Uri.parse(url), headers: _headers);
     return _handle(response);

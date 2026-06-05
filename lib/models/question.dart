@@ -39,6 +39,7 @@ class Question {
   final List<OrderingItem>? items;
   // List
   final int? totalAnswers;
+  final List<String>? listAnswers;
 
   const Question({
     required this.id,
@@ -52,6 +53,7 @@ class Question {
     this.alternatives,
     this.items,
     this.totalAnswers,
+    this.listAnswers,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) => Question(
@@ -73,5 +75,8 @@ class Question {
             ?.map((e) => OrderingItem.fromJson(e as Map<String, dynamic>))
             .toList(),
         totalAnswers: (json['totalAnswers'] as num?)?.toInt(),
+        listAnswers: (json['listAnswers'] as List<dynamic>?)
+            ?.map((e) => e as String)
+            .toList(),
       );
 }

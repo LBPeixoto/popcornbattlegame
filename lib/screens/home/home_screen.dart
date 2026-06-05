@@ -9,6 +9,10 @@ import '../../widgets/challenge_card.dart';
 import '../auth/login_screen.dart';
 import '../challenge/challenge_detail_screen.dart';
 import '../friends/friends_screen.dart';
+import '../player/profile_screen.dart';
+import '../player/privacy_screen.dart';
+import '../player/records_screen.dart';
+import '../suggestions/suggest_question_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -68,6 +72,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _AppDrawer(
+        username: _username,
+        myId: _myId,
+        onLogout: _logout,
+      ),
       appBar: AppBar(
         title: Column(
           children: [
@@ -83,11 +92,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               await Navigator.push(context, MaterialPageRoute(builder: (_) => const FriendsScreen()));
               _refresh();
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
-            onPressed: _logout,
           ),
         ],
         bottom: TabBar(
@@ -221,6 +225,94 @@ class _ErrorState extends StatelessWidget {
             OutlinedButton(onPressed: onRetry, child: const Text('Tentar novamente')),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AppDrawer extends StatelessWidget {
+  final String username;
+  final int myId;
+  final VoidCallback onLogout;
+
+  const _AppDrawer({required this.username, required this.myId, required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: AppColors.surface),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.primary,
+                  child: Icon(Icons.person, color: Colors.white, size: 28),
+                ),
+                const SizedBox(height: 8),
+                Text(username,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('🍿 Popcorn Battle',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('Editar Perfil'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.bar_chart_outlined),
+            title: const Text('Meus Recordes'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RecordsScreen(playerId: myId, playerName: username),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Privacidade'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.lightbulb_outline),
+            title: const Text('Sugerir Pergunta'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SuggestQuestionScreen()),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Sair', style: TextStyle(color: Colors.red)),
+            onTap: () {
+              Navigator.pop(context);
+              onLogout();
+            },
+          ),
+        ],
       ),
     );
   }
