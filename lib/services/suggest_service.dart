@@ -115,4 +115,29 @@ class SuggestService {
       'answers': answers,
     });
   }
+
+  Future<void> suggestHints({
+    required String statement,
+    String? imageUrl,
+    int? decadeId,
+    int? mediaId,
+    required List<int> genreIds,
+    required String orientation,
+    required String answer,
+    required List<String> hints,
+  }) async {
+    await _api.post(ApiConstants.suggestHints, body: {
+      'statement': statement,
+      'imageUrl': imageUrl,
+      'decadeId': decadeId,
+      'mediaId': mediaId,
+      'genreIds': genreIds,
+      'orientation': orientation,
+      'answer': answer,
+      'hints': hints.asMap().entries.map((e) => {
+        'text': e.value,
+        'position': e.key + 1,
+      }).toList(),
+    });
+  }
 }

@@ -23,6 +23,7 @@ class ApiConstants {
   static String roundDraw(int challengeId, int n) => '$baseUrl/challenges/$challengeId/rounds/$n/draw';
   static String roundQuestions(int challengeId, int n) => '$baseUrl/challenges/$challengeId/rounds/$n/questions';
   static String roundAttempt(int challengeId, int n) => '$baseUrl/challenges/$challengeId/rounds/$n/attempt';
+  static String roundRevealed(int challengeId, int n) => '$baseUrl/challenges/$challengeId/rounds/$n/questions/revealed';
 
   // Player profile & privacy
   static const String playersMeVisibility = '$baseUrl/players/me/visibility';
@@ -39,4 +40,5 @@ class ApiConstants {
   static const String suggestTf = '$baseUrl/suggestions/true-false';
   static const String suggestOrdering = '$baseUrl/suggestions/ordering';
   static const String suggestList = '$baseUrl/suggestions/list';
+  static const String suggestHints = '$baseUrl/suggestions/hints';
 }

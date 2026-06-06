@@ -24,6 +24,20 @@ class OrderingItem {
       );
 }
 
+class HintItem {
+  final int id;
+  final String text;
+  final int position;
+
+  const HintItem({required this.id, required this.text, required this.position});
+
+  factory HintItem.fromJson(Map<String, dynamic> json) => HintItem(
+        id: (json['id'] as num).toInt(),
+        text: json['text'] as String,
+        position: (json['position'] as num).toInt(),
+      );
+}
+
 class Question {
   final int id;
   final String statement;
@@ -40,6 +54,9 @@ class Question {
   // List
   final int? totalAnswers;
   final List<String>? listAnswers;
+  // Hints
+  final String? orientation;
+  final List<HintItem>? hints;
 
   const Question({
     required this.id,
@@ -54,6 +71,8 @@ class Question {
     this.items,
     this.totalAnswers,
     this.listAnswers,
+    this.orientation,
+    this.hints,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) => Question(
@@ -77,6 +96,10 @@ class Question {
         totalAnswers: (json['totalAnswers'] as num?)?.toInt(),
         listAnswers: (json['listAnswers'] as List<dynamic>?)
             ?.map((e) => e as String)
+            .toList(),
+        orientation: json['orientation'] as String?,
+        hints: (json['hints'] as List<dynamic>?)
+            ?.map((e) => HintItem.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

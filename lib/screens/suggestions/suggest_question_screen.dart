@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
-import 'suggest_mc_screen.dart';
-import 'suggest_tf_screen.dart';
-import 'suggest_ordering_screen.dart';
+import 'suggest_hints_screen.dart';
 import 'suggest_list_screen.dart';
+import 'suggest_mc_screen.dart';
+import 'suggest_ordering_screen.dart';
+import 'suggest_tf_screen.dart';
 
 class SuggestQuestionScreen extends StatelessWidget {
   const SuggestQuestionScreen({super.key});
@@ -57,6 +58,16 @@ class SuggestQuestionScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SuggestListScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _TypeCard(
+            icon: Icons.lightbulb_outline,
+            title: 'Dicas',
+            subtitle: 'Adivinhe o título, personagem ou ator com 10 dicas',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SuggestHintsScreen()),
             ),
           ),
         ],

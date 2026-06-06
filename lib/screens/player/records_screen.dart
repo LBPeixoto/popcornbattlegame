@@ -24,6 +24,15 @@ class _RecordsScreenState extends State<RecordsScreen> {
     _load();
   }
 
+  String? _quizTypeLabel(String? type) => switch (type) {
+        'MULTIPLE_CHOICE' => 'Múltipla Escolha',
+        'TRUE_FALSE' => 'Verdadeiro/Falso',
+        'ORDERING' => 'Ordenação',
+        'LIST' => 'Lista',
+        'HINTS' => 'Dicas',
+        _ => null,
+      };
+
   Future<void> _load() async {
     final storage = await StorageService.getInstance();
     final service = PlayerService(ApiClient(storage));
@@ -73,10 +82,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
               _RecordTile(label: 'Mais vencido', value: r.mostWonTheme?.name),
               _RecordTile(label: 'Mais perdido', value: r.mostLostTheme?.name),
               const SizedBox(height: 8),
-              _SectionHeader('Gêneros'),
-              _RecordTile(label: 'Mais jogado', value: r.mostPlayedGenre?.name),
-              _RecordTile(label: 'Mais vencido', value: r.mostWonGenre?.name),
-              _RecordTile(label: 'Mais perdido', value: r.mostLostGenre?.name),
+              _SectionHeader('Tipo de Jogo'),
+              _RecordTile(label: 'Mais jogado', value: _quizTypeLabel(r.mostPlayedQuizType)),
+              _RecordTile(label: 'Mais vencido', value: _quizTypeLabel(r.mostWonQuizType)),
+              _RecordTile(label: 'Mais perdido', value: _quizTypeLabel(r.mostLostQuizType)),
               const SizedBox(height: 8),
               _SectionHeader('Rivais'),
               _RecordTile(label: 'Mais desafiado', value: r.mostChallengedPlayer?.username),

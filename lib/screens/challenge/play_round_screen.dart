@@ -23,6 +23,7 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
   int _current = 0;
   bool _loading = true;
   String? _error;
+  int _myId = 0;
 
   // Per-question answers
   final Map<int, AnswerItem> _answers = {};
@@ -48,6 +49,7 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
   Future<void> _loadQuestions() async {
     try {
       final storage = await StorageService.getInstance();
+      _myId = storage.playerId ?? 0;
       final service = ChallengeService(ApiClient(storage));
       final questions = await service.getQuestions(widget.challengeId, widget.round.roundNumber);
       setState(() {
@@ -103,7 +105,13 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
       );
       if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(
-        builder: (_) => RoundResultScreen(round: round, questions: _questions!),
+        builder: (_) => RoundResultScreen(
+          round: round,
+          questions: _questions!,
+          myId: _myId,
+          submittedAnswers: Map.from(_answers),
+          challengeId: widget.challengeId,
+        ),
       ));
     } catch (e) {
       setState(() { _loading = false; _error = '$e'; });
@@ -276,6 +284,7 @@ class _QuestionWidget extends StatelessWidget {
       'TRUE_FALSE' => _TrueFalseWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
       'ORDERING' => _OrderingWidget(key: ValueKey(question.id), question: question, current: currentAnswer, onAnswer: onAnswer),
       'LIST' => _ListWidget(question: question, current: currentAnswer, onAnswer: onAnswer),
+      'HINTS' => _HintsWidget(key: ValueKey(question.id), question: question, current: currentAnswer, onAnswer: onAnswer),
       _ => const Text('Tipo de questão desconhecido'),
     };
   }
@@ -587,6 +596,207 @@ class _ListWidgetState extends State<_ListWidget> {
             ),
           )),
         ],
+      ],
+    );
+  }
+}
+
+class _HintsWidget extends StatefulWidget {
+  final Question question;
+  final AnswerItem? current;
+  final void Function(AnswerItem) onAnswer;
+
+  const _HintsWidget({super.key, required this.question, required this.current, required this.onAnswer});
+
+  @override
+  State<_HintsWidget> createState() => _HintsWidgetState();
+}
+
+class _HintsWidgetState extends State<_HintsWidget> {
+  int _revealed = 0;
+  final _controller = TextEditingController();
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.current?.guessText != null) {
+      _controller.text = widget.current!.guessText!;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  List<HintItem> get _hints =>
+      (widget.question.hints ?? [])..sort((a, b) => a.position.compareTo(b.position));
+
+  String _orientationLabel() => switch (widget.question.orientation) {
+        'TITLE'     => 'Qual o título?',
+        'CHARACTER' => 'Qual o personagem?',
+        'ACTOR'     => 'Qual o ator/atriz?',
+        _           => 'Qual a resposta?',
+      };
+
+  void _revealNext() {
+    final total = _hints.length;
+    if (_revealed < total) {
+      setState(() => _revealed++);
+      _updateAnswer();
+    }
+  }
+
+  void _updateAnswer() {
+    widget.onAnswer(AnswerItem(
+      questionId: widget.question.id,
+      guessText: _controller.text.trim().isEmpty ? null : _controller.text.trim(),
+      hintsUsed: _revealed,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hints = _hints;
+    final total = hints.length;
+    final canReveal = _revealed < total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Orientação
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.lightbulb_outline, color: AppColors.primary, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                _orientationLabel(),
+                style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Contador de dicas
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Dicas reveladas: $_revealed / $total',
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13),
+            ),
+            if (canReveal)
+              TextButton.icon(
+                onPressed: _revealNext,
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('Revelar dica', style: TextStyle(fontSize: 13)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.secondary,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Dicas reveladas
+        if (_revealed == 0)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.divider, style: BorderStyle.solid),
+            ),
+            child: const Text(
+              'Nenhuma dica revelada ainda.\nTente adivinhar ou revele uma dica!',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          )
+        else
+          ...hints.take(_revealed).map((h) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${h.position}',
+                          style: const TextStyle(
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(h.text,
+                          style: const TextStyle(fontSize: 14)),
+                    ),
+                  ],
+                ),
+              )),
+
+        const SizedBox(height: 16),
+
+        // Campo de resposta
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                onChanged: (_) => _updateAnswer(),
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  hintText: 'Digite sua resposta...',
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  suffixIcon: _controller.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _controller.clear();
+                            _updateAnswer();
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }

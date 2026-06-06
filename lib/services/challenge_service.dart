@@ -2,6 +2,7 @@ import '../core/constants/api_constants.dart';
 import '../core/services/api_client.dart';
 import '../models/challenge.dart';
 import '../models/question.dart';
+import '../models/revealed_answer.dart';
 import '../models/round.dart';
 
 class AnswerItem {
@@ -10,6 +11,8 @@ class AnswerItem {
   final bool? tfAnswer;
   final List<int>? orderedItemIds;
   final List<String>? listAnswers;
+  final String? guessText;
+  final int? hintsUsed;
 
   const AnswerItem({
     required this.questionId,
@@ -17,6 +20,8 @@ class AnswerItem {
     this.tfAnswer,
     this.orderedItemIds,
     this.listAnswers,
+    this.guessText,
+    this.hintsUsed,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +30,8 @@ class AnswerItem {
         if (tfAnswer != null) 'tfAnswer': tfAnswer,
         if (orderedItemIds != null) 'orderedItemIds': orderedItemIds,
         if (listAnswers != null) 'listAnswers': listAnswers,
+        if (guessText != null) 'guessText': guessText,
+        if (hintsUsed != null) 'hintsUsed': hintsUsed,
       };
 }
 
@@ -58,6 +65,11 @@ class ChallengeService {
   Future<List<Question>> getQuestions(int challengeId, int roundNumber) async {
     final data = await _api.get(ApiConstants.roundQuestions(challengeId, roundNumber)) as List<dynamic>;
     return data.map((e) => Question.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<RevealedAnswer>> getRevealedAnswers(int challengeId, int roundNumber) async {
+    final data = await _api.get(ApiConstants.roundRevealed(challengeId, roundNumber)) as List<dynamic>;
+    return data.map((e) => RevealedAnswer.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<Round> submitAttempt({
