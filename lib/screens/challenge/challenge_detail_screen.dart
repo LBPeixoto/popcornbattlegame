@@ -45,7 +45,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
     final round = c.currentRound;
     if (round == null) return;
 
-    if (round.isWaitingDrawer && round.drawer.id == _myId) {
+    if (round.isWaitingDrawer && round.drawer.id == _myId && round.theme == null) {
       await Navigator.push(context, MaterialPageRoute(
         builder: (_) => DrawRoundScreen(challengeId: c.id, roundNumber: round.roundNumber),
       ));

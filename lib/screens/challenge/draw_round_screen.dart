@@ -66,7 +66,9 @@ class _DrawRoundScreenState extends State<DrawRoundScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: _drawn == null,
+      child: Scaffold(
       appBar: AppBar(title: Text('Round ${widget.roundNumber} — Sorteio')),
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -151,14 +153,10 @@ class _DrawRoundScreenState extends State<DrawRoundScreen> with SingleTickerProv
                 style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 60)),
                 child: const Text('▶  Jogar agora!', style: TextStyle(fontSize: 20)),
               ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Jogar depois'),
-              ),
             ],
           ],
         ),
+      ),
       ),
     );
   }
