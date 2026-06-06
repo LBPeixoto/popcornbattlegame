@@ -28,7 +28,9 @@
       "Read(//proc/**)",
       "Bash(mkdir -p ~/Android/Sdk/cmdline-tools)",
       "Bash(wget -q --show-progress \"https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip\" -O cmdline-tools.zip)",
-      "Bash(unzip -q cmdline-tools.zip -d /tmp/cmdline-tools-extract)"
+      "Bash(unzip -q cmdline-tools.zip -d /tmp/cmdline-tools-extract)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

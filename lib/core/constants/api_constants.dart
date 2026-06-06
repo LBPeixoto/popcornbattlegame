@@ -31,6 +31,9 @@ class ApiConstants {
   // Themes
   static const String themes = '$baseUrl/themes';
 
+  // Tickets
+  static const String buyTicketWithCoins = '$baseUrl/tickets/purchase';
+
   // Suggestions
   static const String suggestMc = '$baseUrl/suggestions/multiple-choice';
   static const String suggestTf = '$baseUrl/suggestions/true-false';

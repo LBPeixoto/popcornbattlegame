@@ -3,7 +3,7 @@ import 'package:popcornbattlegame/main.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const PopcornBattleApp(isLoggedIn: false));
+    await tester.pumpWidget(const PopcornBattleApp());
     expect(find.byType(PopcornBattleApp), findsOneWidget);
   });
 }

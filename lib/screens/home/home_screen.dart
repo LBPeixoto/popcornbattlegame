@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../core/services/api_client.dart';
 import '../../core/services/storage_service.dart';
@@ -48,15 +50,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _challengeService = ChallengeService(api);
     _playerService = PlayerService(api);
     _refresh();
-    _playerService.getMe().then((p) {
-      if (mounted) setState(() => _player = p);
-    }).catchError((_) {});
   }
 
   void _refresh() {
     setState(() {
       _challengesFuture = _challengeService.listChallenges();
     });
+    _playerService.getMe().then((p) {
+      if (mounted) setState(() => _player = p);
+    }).catchError((_) {});
   }
 
   Future<void> _logout() async {
@@ -87,13 +89,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         onLogout: _logout,
       ),
       appBar: AppBar(
-        title: Column(
-          children: [
-            const Text('🍿 POPCORN BATTLE', style: TextStyle(fontSize: 16)),
-            Text('Olá, $_username', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-          ],
+        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) => GestureDetector(
+            onTap: () => Scaffold.of(context).openDrawer(),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary,
+                backgroundImage: _player?.avatarUrl != null
+                    ? NetworkImage(_player!.avatarUrl!)
+                    : null,
+                child: _player?.avatarUrl == null
+                    ? const Icon(Icons.person, color: Colors.white, size: 20)
+                    : null,
+              ),
+            ),
+          ),
         ),
+        title: const Text('🍿 POPCORN BATTLE', style: TextStyle(fontSize: 16)),
         actions: [
+          if (_player != null) _TicketChip(player: _player!),
+          if (_player != null) _CoinChip(coins: _player!.coins),
           IconButton(
             icon: const Icon(Icons.people_outline),
             tooltip: 'Amigos',
@@ -202,7 +220,7 @@ class _ChallengeList extends StatelessWidget {
       onRefresh: () async {},
       child: ListView.builder(
         itemCount: challenges.length,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.only(top: 8, bottom: 88),
         itemBuilder: (_, i) => ChallengeCard(
           challenge: challenges[i],
           myId: myId,
@@ -232,6 +250,129 @@ class _ErrorState extends StatelessWidget {
             Text(error, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             OutlinedButton(onPressed: onRetry, child: const Text('Tentar novamente')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CoinChip extends StatelessWidget {
+  final int coins;
+  const _CoinChip({required this.coins});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.monetization_on, size: 14, color: AppColors.secondary),
+            const SizedBox(width: 4),
+            Text(
+              '$coins',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TicketChip extends StatefulWidget {
+  final Player player;
+  const _TicketChip({required this.player});
+
+  @override
+  State<_TicketChip> createState() => _TicketChipState();
+}
+
+class _TicketChipState extends State<_TicketChip> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void didUpdateWidget(_TicketChip old) {
+    super.didUpdateWidget(old);
+    if (old.player.nextTicketAt != widget.player.nextTicketAt) {
+      _timer?.cancel();
+      _startTimer();
+    }
+  }
+
+  void _startTimer() {
+    if (widget.player.nextTicketAt != null) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _format(Duration d) {
+    if (d.inHours >= 1) {
+      final h = d.inHours;
+      final m = d.inMinutes.remainder(60);
+      return '${h}h${m.toString().padLeft(2, '0')}';
+    }
+    final m = d.inMinutes;
+    final s = d.inSeconds.remainder(60);
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final next = widget.player.nextTicketAt;
+    Duration? remaining;
+    if (next != null) {
+      final diff = next.difference(DateTime.now());
+      remaining = diff.isNegative ? null : diff;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.confirmation_num, size: 14, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Text(
+              '${widget.player.tickets}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            if (remaining != null) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.schedule, size: 12, color: AppColors.textSecondary),
+              const SizedBox(width: 2),
+              Text(
+                _format(remaining),
+                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ],
           ],
         ),
       ),

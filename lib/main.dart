@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
-import 'core/services/storage_service.dart';
 import 'core/theme/app_theme.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/home/home_screen.dart';
+import 'screens/splash_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final storage = await StorageService.getInstance();
-  runApp(PopcornBattleApp(isLoggedIn: storage.isLoggedIn));
+  runApp(const PopcornBattleApp());
 }
 
 class PopcornBattleApp extends StatelessWidget {
-  final bool isLoggedIn;
-
-  const PopcornBattleApp({super.key, required this.isLoggedIn});
+  const PopcornBattleApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +16,7 @@ class PopcornBattleApp extends StatelessWidget {
       title: 'Popcorn Battle',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
-      home: isLoggedIn ? const HomeScreen() : const LoginScreen(),
+      home: const SplashScreen(),
     );
   }
 }

@@ -8,6 +8,8 @@ import '../../services/challenge_service.dart';
 import '../../services/friend_service.dart';
 import '../../services/player_service.dart';
 
+enum _TicketAction { buyWithCoins, watchAd }
+
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
 
@@ -21,6 +23,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
   late PlayerService _playerService;
   late ChallengeService _challengeService;
   late int _myId;
+  Player? _me;
 
   late Future<List<FriendStatus>> _friendsFuture;
   late Future<List<FriendRequest>> _pendingFuture;
@@ -44,6 +47,9 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
     _playerService = PlayerService(api);
     _challengeService = ChallengeService(api);
     _refresh();
+    _playerService.getMe().then((p) {
+      if (mounted) setState(() => _me = p);
+    }).catchError((_) {});
   }
 
   void _refresh() {
@@ -93,6 +99,50 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
   }
 
   Future<void> _challenge(FriendStatus friend) async {
+    if (_me != null && _me!.tickets <= 0) {
+      final action = await showDialog<_TicketAction>(
+        context: context,
+        builder: (_) => _NoTicketDialog(coins: _me!.coins),
+      );
+      if (action == null || !mounted) return;
+      if (action == _TicketAction.buyWithCoins) {
+        await _buyTicketAndChallenge(friend);
+      } else {
+        _watchAdAndChallenge(friend);
+      }
+      return;
+    }
+    await _doChallenge(friend);
+  }
+
+  Future<void> _buyTicketAndChallenge(FriendStatus friend) async {
+    if (_me!.coins < 50) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Moedas insuficientes.'), backgroundColor: AppColors.wrong),
+      );
+      return;
+    }
+    try {
+      final updated = await _playerService.buyTicketWithCoins();
+      if (!mounted) return;
+      setState(() => _me = updated);
+      await _doChallenge(friend);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.wrong),
+      );
+    }
+  }
+
+  void _watchAdAndChallenge(FriendStatus friend) {
+    // TODO: integrar SDK de anúncios e chamar _doChallenge(friend) ao concluir
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Anúncios em breve!'), backgroundColor: AppColors.surface),
+    );
+  }
+
+  Future<void> _doChallenge(FriendStatus friend) async {
     try {
       await _challengeService.createChallenge(friend.id);
       if (!mounted) return;
@@ -101,6 +151,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
       );
       Navigator.pop(context);
     } on ApiException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message), backgroundColor: AppColors.wrong),
       );
@@ -269,6 +320,115 @@ class _FriendsList extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+class _NoTicketDialog extends StatelessWidget {
+  final int coins;
+  const _NoTicketDialog({required this.coins});
+
+  @override
+  Widget build(BuildContext context) {
+    final canAfford = coins >= 50;
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Row(
+        children: [
+          Icon(Icons.confirmation_num, color: AppColors.primary),
+          SizedBox(width: 8),
+          Text('Sem tickets!'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Você não tem tickets para criar um novo desafio.'),
+          const SizedBox(height: 16),
+          const Text('Como deseja obter um ticket?',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const SizedBox(height: 12),
+          _OptionTile(
+            icon: Icons.monetization_on,
+            iconColor: AppColors.secondary,
+            title: 'Comprar por 50 moedas',
+            subtitle: 'Você tem $coins moedas${canAfford ? '' : ' (insuficiente)'}',
+            enabled: canAfford,
+            onTap: () => Navigator.pop(context, _TicketAction.buyWithCoins),
+          ),
+          const SizedBox(height: 8),
+          _OptionTile(
+            icon: Icons.play_circle_outline,
+            iconColor: AppColors.primary,
+            title: 'Assistir propaganda',
+            subtitle: 'Ganhe 1 ticket gratuito',
+            enabled: true,
+            onTap: () => Navigator.pop(context, _TicketAction.watchAd),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar', style: TextStyle(color: AppColors.textSecondary)),
+        ),
+      ],
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _OptionTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.4,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: iconColor, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(subtitle,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 18),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

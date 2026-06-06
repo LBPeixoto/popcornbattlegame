@@ -52,6 +52,11 @@ class PlayerService {
     return Player.fromJson(data);
   }
 
+  Future<Player> buyTicketWithCoins() async {
+    await _api.post(ApiConstants.buyTicketWithCoins);
+    return getMe();
+  }
+
   Future<PlayerRecord> getRecords(int playerId) async {
     final data = await _api.get(ApiConstants.playerRecords(playerId)) as Map<String, dynamic>;
     return PlayerRecord.fromJson(data);
