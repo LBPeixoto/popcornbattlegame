@@ -33,6 +33,9 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
   int _timeLeft = 30;
   final _stopwatch = Stopwatch();
 
+  // True/False swipe
+  double _tfDragX = 0;
+
   @override
   void initState() {
     super.initState();
@@ -83,12 +86,59 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
 
   void _nextQuestion() {
     _timer?.cancel();
+    _tfDragX = 0;
     if (_current >= (_questions!.length - 1)) {
       _submit();
     } else {
       setState(() => _current++);
       _startTimer();
     }
+  }
+
+  void _onTfDragUpdate(DragUpdateDetails d) {
+    final q = _questions![_current];
+    if (_answers.containsKey(q.id)) return;
+    setState(() => _tfDragX += d.delta.dx);
+  }
+
+  void _onTfDragEnd(DragEndDetails _) {
+    final q = _questions![_current];
+    if (_answers.containsKey(q.id)) {
+      setState(() => _tfDragX = 0);
+      return;
+    }
+    final screenWidth = MediaQuery.of(context).size.width;
+    if (_tfDragX.abs() >= screenWidth * 0.35) {
+      _recordAnswer(AnswerItem(questionId: q.id, tfAnswer: _tfDragX < 0));
+    }
+    setState(() => _tfDragX = 0);
+  }
+
+  Widget _buildTfOverlay(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final progress = (_tfDragX / (screenWidth * 0.35)).clamp(-1.0, 1.0);
+    final abs = progress.abs();
+    final isVerdade = _tfDragX < 0;
+    final color = isVerdade ? AppColors.correct : AppColors.wrong;
+    final label = isVerdade ? 'VERDADEIRO' : 'FALSO';
+    return Positioned.fill(
+      child: Container(
+        color: color.withValues(alpha: abs * 0.55),
+        alignment: Alignment.center,
+        child: Opacity(
+          opacity: (abs * 1.6).clamp(0.0, 1.0),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 56,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 3,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _submit() async {
@@ -131,47 +181,65 @@ class _PlayRoundScreenState extends State<PlayRoundScreen> {
     final questions = _questions!;
     final q = questions[_current];
     final answered = _answers.containsKey(q.id);
+    final isTf = q.quizType == 'TRUE_FALSE';
 
-    return Scaffold(
+    final bodyColumn = Column(
+      children: [
+        _ProgressHeader(current: _current, total: questions.length, timeLeft: _timeLeft, timeLimitSeconds: q.timeLimitSeconds),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (q.imageUrl != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(q.imageUrl!, height: 180, width: double.infinity, fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
+                  ),
+                const SizedBox(height: 16),
+                Text(q.statement, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                _ThemeChips(question: q),
+                const SizedBox(height: 20),
+                _QuestionWidget(
+                  question: q,
+                  currentAnswer: _answers[q.id],
+                  onAnswer: _recordAnswer,
+                ),
+              ],
+            ),
+          ),
+        ),
+        _BottomBar(
+          answered: answered,
+          isLast: _current == questions.length - 1,
+          onNext: _nextQuestion,
+        ),
+      ],
+    );
+
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       appBar: AppBar(
         title: Text('Round ${widget.round.roundNumber} — ${widget.round.quizTypeDisplay ?? ''}'),
         automaticallyImplyLeading: false,
       ),
-      body: Column(
-        children: [
-          _ProgressHeader(current: _current, total: questions.length, timeLeft: _timeLeft, timeLimitSeconds: q.timeLimitSeconds),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: isTf
+          ? GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragUpdate: _onTfDragUpdate,
+              onHorizontalDragEnd: _onTfDragEnd,
+              child: Stack(
                 children: [
-                  if (q.imageUrl != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.network(q.imageUrl!, height: 180, width: double.infinity, fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const SizedBox.shrink()),
-                    ),
-                  const SizedBox(height: 16),
-                  Text(q.statement, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  _ThemeChips(question: q),
-                  const SizedBox(height: 20),
-                  _QuestionWidget(
-                    question: q,
-                    currentAnswer: _answers[q.id],
-                    onAnswer: _recordAnswer,
-                  ),
+                  bodyColumn,
+                  if (_tfDragX != 0) IgnorePointer(child: _buildTfOverlay(context)),
                 ],
               ),
-            ),
-          ),
-          _BottomBar(
-            answered: answered,
-            isLast: _current == questions.length - 1,
-            onNext: _nextQuestion,
-          ),
-        ],
+            )
+          : bodyColumn,
       ),
     );
   }
@@ -327,46 +395,47 @@ class _MultipleChoiceWidget extends StatelessWidget {
 }
 
 class _TrueFalseWidget extends StatelessWidget {
-  final Question question;
   final AnswerItem? current;
-  final void Function(AnswerItem) onAnswer;
 
-  const _TrueFalseWidget({required this.question, required this.current, required this.onAnswer});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _TFButton(label: 'Verdadeiro ✅', value: true, selected: current?.tfAnswer == true, onTap: () => onAnswer(AnswerItem(questionId: question.id, tfAnswer: true)))),
-        const SizedBox(width: 12),
-        Expanded(child: _TFButton(label: 'Falso ❌', value: false, selected: current?.tfAnswer == false, onTap: () => onAnswer(AnswerItem(questionId: question.id, tfAnswer: false)))),
-      ],
-    );
-  }
-}
-
-class _TFButton extends StatelessWidget {
-  final String label;
-  final bool value;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TFButton({required this.label, required this.value, required this.selected, required this.onTap});
+  const _TrueFalseWidget({required this.current, required Question question, required void Function(AnswerItem) onAnswer});
 
   @override
   Widget build(BuildContext context) {
-    final color = value ? AppColors.correct : AppColors.wrong;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.2) : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: selected ? color : AppColors.divider, width: selected ? 2 : 1),
+    final answered = current?.tfAnswer;
+    if (answered != null) {
+      final color = answered ? AppColors.correct : AppColors.wrong;
+      final label = answered ? 'Verdadeiro ✅' : 'Falso ❌';
+      return Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Text(label, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
         ),
-        child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, color: selected ? color : null)),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.arrow_back_rounded, color: AppColors.wrong, size: 28),
+          const SizedBox(width: 8),
+          const Text('Falso', style: TextStyle(color: AppColors.wrong, fontWeight: FontWeight.bold, fontSize: 15)),
+          const Spacer(),
+          const Text('Deslize', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const Spacer(),
+          const Text('Verdadeiro', style: TextStyle(color: AppColors.correct, fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(width: 8),
+          const Icon(Icons.arrow_forward_rounded, color: AppColors.correct, size: 28),
+        ],
       ),
     );
   }
